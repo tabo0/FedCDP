@@ -1,0 +1,6 @@
+model:
+  type: vgg
+  classname: VGG
+  args:
+    in_features: 3
+    num_classes: 10

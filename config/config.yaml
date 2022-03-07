@@ -1,0 +1,29 @@
+defaults:
+  - model: vgg
+  - fed: fedavg
+  - optim: sgd
+
+device: 'cpu'
+
+n_round: 200
+E: 5
+K: 100
+C: 0.1
+B: 64
+iid: False
+dataSet: cifar10
+seed: 1999
+resume: False
+  #../input/fedprune/epoch80_model.pth.tar
+env: ./input
+root: ./input
+savedir: ./output/${fed.type}/${now:%Y-%m-%d_%H-%M-%S}
+
+hydra:
+  run:
+    dir: ./output/${fed.type}/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    # Output directory for sweep runs
+    dir: ${./output/${fed.type}/${now:%Y-%m-%d_%H-%M-%S}/${hydra.job.name}
+    # Output sub directory for sweep runs.
+    subdir: ${hydra.job.num}_${hydra.job.id}

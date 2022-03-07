@@ -1,0 +1,6 @@
+model:
+  type: vggsmall
+  classname: vggsmall
+  args:
+    in_features: 32
+    num_classes: 10
