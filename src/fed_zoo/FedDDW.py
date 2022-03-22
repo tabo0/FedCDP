@@ -20,7 +20,7 @@ from src.fed_zoo.client import FedAvgClient as Client
 from src.fed_zoo.center_server import FedAvgCenterServer as CenterServer
 
 
-class FedAvg(FedBase):
+class FedDDW(FedBase):
     def __init__(self,
                  model,
                  optimizer,
