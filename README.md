@@ -7,8 +7,9 @@
 - Numpy
 - Pytorch 1.4.0+
 - torchvision
-- hydra-core
+- hydra-core=0.9.0
 - tensorboard
+- omegaconf=1.3.0
 
 
 ## Train
