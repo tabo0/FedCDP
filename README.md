@@ -19,10 +19,9 @@ $ python train.py n_round=100 C=0.3
 ```
 
 ## Usages config\config.yaml
-- defaults:
-    - model: vgg
-    - fed: fedavg
-    - optim: sgd
+- `model`: vgg
+- `fed`: fedavg
+- `optim`: sgd
 
 - device: 'cuda'
 
