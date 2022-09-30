@@ -17,3 +17,24 @@
 # example
 $ python train.py n_round=100 C=0.3
 ```
+
+## Usages config\config.yaml
+- defaults:
+    - model: vgg
+    - fed: fedavg
+    - optim: sgd
+
+- device: 'cuda'
+
+- n_round: 200
+- E: 5
+- K: 100
+- C: 0.1
+- B: 64
+- iid: False
+- dataSet: mnist
+- seed: 1999
+- resume: False
+- env: ./input
+- root: ./input
+- savedir: ./output/${fed.type}/${now:%Y-%m-%d_%H-%M-%S}
