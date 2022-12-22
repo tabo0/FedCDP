@@ -20,7 +20,7 @@ $ python train.py n_round=100 C=0.3
 
 ## Usages config\config.yaml
 - `model`: vgg # 模型
-- `fed`: fedavg # 算法
+- `fed`: fedCDP # 算法
 - `optim`: sgd # 优化
 
 - `device`: 'cuda'
