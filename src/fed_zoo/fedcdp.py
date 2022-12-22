@@ -20,7 +20,7 @@ from src.fed_zoo.client import FedAvgClient as Client
 from src.fed_zoo.center_server import FedAvgCenterServer as CenterServer
 
 
-class FedAvg(FedBase):
+class FedCDP(FedBase):
     def __init__(self,
                  model,
                  optimizer,
@@ -199,8 +199,8 @@ class FedAvg(FedBase):
                 if(self.Acc[i]<acc): self.Acc[i]=acc
         test_loss/=len(sample)
         accuracy/=len(sample)
-        print("loss:",loss)
-        print(" acc:",a)
+        # print("loss:",loss)
+        # print(" acc:",a)
         log.info(
             f"[Round: {self._round: 04}] Test set: Average loss: {test_loss:.4f}, Accuracy: {accuracy:.2f}%,bestAvgAcc:{self.bestAcc.mean():.4f},avgAcc:{self.Acc.mean():.4f}"
         )
@@ -213,3 +213,5 @@ class FedAvg(FedBase):
         self.result['accuracy'].append(accuracy)
         self.result['avgAcc'].append(self.bestAcc.mean())
         self.result['bestAvgAcc'].append(self.bestAcc.mean())
+        with open("./result.pkl", "wb") as f:
+            pickle.dump(self.result, f)

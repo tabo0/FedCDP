@@ -123,14 +123,16 @@ def count_model_param_flops(model=None, input_res=224, multiply_adds=True):
     foo(model)
     # print(hand)
     input = torch.FloatTensor(1, 3, input_res, input_res)
-    input = torch.FloatTensor(1, 3, input_res, input_res).to("cuda")
+    input = torch.FloatTensor(1, 1, input_res, input_res).to("cuda")
     model.to('cuda')
     _ = model(input)
     for h in hand:
         h.remove()
     npf=np.array(list_conv,dtype='float64')
+    #print(list_conv)
     npf=npf/npf.max()*-1.0
     npf=1/np.exp(4*npf)
+    npf=np.ones(len(list_conv))
     total_flops = (sum(list_conv) + sum(list_linear) + sum(list_bn) + sum(list_relu) + sum(list_pooling) + sum(
         list_upsample))
 

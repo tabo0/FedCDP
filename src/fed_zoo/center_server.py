@@ -33,7 +33,9 @@ class CenterServer:
         self.pruned_params=0
         self.pruned_flops=0
         self.layer_flops=layer_flops
-
+        self.pruneRatio = []
+        self.weightMean=[]
+        self.importanceMean = []
     def aggregation(self):
         raise NotImplementedError
 
@@ -47,6 +49,7 @@ class CenterServer:
 class FedAvgCenterServer(CenterServer):
     def __init__(self, model, dataloader, device="cpu",params_before=0,flops_before=0,layer_flops=[]):
         super().__init__(model, dataloader, device,params_before,flops_before,layer_flops)
+
 
     def aggregation(self, clients, aggregation_weights,epoch,select):
         update_state = OrderedDict()
@@ -104,6 +107,19 @@ class FedAvgCenterServer(CenterServer):
         #     self.SimilarityArray=method.SimilarityArray
         #     self.sameArray*=method.SimilarityArray
         #     print("serverSimilar:",similar,"same:",self.sameArray.sum()/len(self.sameArray))
+        if((epoch-1)%10==0):
+            self.pruneRatio.append(method.printf)
+            file=np.array(self.pruneRatio)
+            print(file)
+            np.save('D:\code\ecnu\py\\fed-main\output\plot\PruneRatio{}'.format(epoch), file)
+            self.weightMean.append(method.weightMean)
+            file = np.array(self.weightMean)
+            print(file)
+            np.save('D:\code\ecnu\py\\fed-main\output\plot\WeightMean{}'.format(epoch), file)
+            self.importanceMean.append(method.importanceMean)
+            file = np.array(self.importanceMean)
+            print(file)
+            np.save('D:\code\ecnu\py\\fed-main\output\plot\ImportanceMean{}'.format(epoch), file)
         self.model = method.model
         a=self.model.state_dict()
         model_pruning = copy.deepcopy(self.model)

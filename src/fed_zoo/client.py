@@ -84,7 +84,7 @@ class FedAvgClient(Client):
         # pruned_params = 1 - params_pruning / self.params_before
         # pruned_flops = 1 - flops_pruning / self.flops_before
         #print("pruned_params:",pruned_params," pruned_flops:",pruned_flops,"loss:",train_loss/(local_epoch*len(self.dataloader)),"s_e:",s_e)
-        print( "loss:",train_loss / (local_epoch * len(self.dataloader)),"lr:",self.lr)
+        #print( "loss:",train_loss / (local_epoch * len(self.dataloader)),"lr:",self.lr)
         # if(pruned_params>=0.74):self.flag=1
         # model_pruning = copy.deepcopy(self.model)
         # method1 = DPSS(model_pruning, self.lambda21, self.pr)

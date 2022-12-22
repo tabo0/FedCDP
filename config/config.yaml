@@ -1,9 +1,9 @@
 defaults:
   - model: vgg
-  - fed: fedavg
+  - fed: fedCDP
   - optim: sgd
 
-device: 'cpu'
+device: 'cuda'
 
 n_round: 200
 E: 5
@@ -11,7 +11,7 @@ K: 100
 C: 0.1
 B: 64
 iid: False
-dataSet: cifar10
+dataSet: mnist
 seed: 1999
 resume: False
   #../input/fedprune/epoch80_model.pth.tar

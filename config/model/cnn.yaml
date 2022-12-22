@@ -2,5 +2,5 @@ model:
   type: cnn
   classname: CNN
   args:
-    in_features: 3
+    in_features: 1
     num_classes: 10

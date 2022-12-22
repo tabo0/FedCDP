@@ -1,0 +1,3 @@
+fed:
+  type: fedcdp
+  classname: FedCDP

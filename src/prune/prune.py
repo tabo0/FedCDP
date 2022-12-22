@@ -82,193 +82,6 @@ args.save_dir = os.path.join('./snapshot/',
 args.save_time = args.save_time + '_dpss_sigmoid_filter_sum_context_add_scratch_' + time.strftime("%Y%m%d%H%M",
                                                                                                   time.localtime())
 args.cuda = not args.no_cuda and torch.cuda.is_available()
-def main():
-
-    if not os.path.isdir(args.save_dir):
-        os.makedirs(args.save_dir)
-    log = open(os.path.join(args.save_dir, '{}.log'.format(args.save_time)), 'w')
-    log1 = open(os.path.join(args.save_dir, '{}_rate_epoch.txt'.format(args.save_time)), 'w')
-    log2 = open(os.path.join(args.save_dir, '{}_sparsity_ratio_epoch.txt'.format(args.save_time)), 'w')
-    log3 = open(os.path.join(args.save_dir, '{}_sparsity_allocation_ratio_epoch.txt'.format(args.save_time)), 'w')
-    model_save_name = os.path.join(args.save_dir, args.save_time)
-
-    print_log('Parameters setting: \n''epochs: {}\t''lr: {}\n'.format(args.epochs, args.lr), log)
-
-    # initial
-    torch.manual_seed(args.seed)
-    if args.cuda:
-        torch.cuda.manual_seed(args.seed)
-    else:
-        args.batch_size = 256
-    # Data loading code
-    kwargs = {'num_workers': args.workers, 'pin_memory': True} if args.cuda else {}
-    if args.dataset == 'cifar10':
-        train_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR10(args.data_dir, train=True, download=True,
-                             transform=transforms.Compose([
-                                 transforms.Pad(4),
-                                 transforms.RandomCrop(32),
-                                 transforms.RandomHorizontalFlip(),
-                                 transforms.ToTensor(),
-                                 transforms.Normalize([0.4914, 0.4824, 0.4467], [0.2471, 0.2435, 0.2616])
-                             ])),
-            batch_size=args.batch_size, shuffle=True, **kwargs)
-        val_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR10(args.data_dir, train=False, transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize([0.4914, 0.4824, 0.4467], [0.2471, 0.2435, 0.2616])
-            ])),
-            batch_size=args.test_batch_size, shuffle=True, **kwargs)
-        num_classes = 10
-        input_pix = 32
-
-    elif args.dataset == 'cifar100':
-        train_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR100(args.data_dir, train=True, download=True,
-                              transform=transforms.Compose([
-                                  transforms.Pad(4),
-                                  transforms.RandomCrop(32),
-                                  transforms.RandomHorizontalFlip(),
-                                  transforms.ToTensor(),
-                                  transforms.Normalize([0.5071, 0.4867, 0.4408], [0.2675, 0.2565, 0.2761])
-                              ])),
-            batch_size=args.batch_size, shuffle=True, **kwargs)
-        val_loader = torch.utils.data.DataLoader(
-            datasets.CIFAR100(args.data_dir, train=False, transform=transforms.Compose([
-                transforms.ToTensor(),
-                transforms.Normalize([0.5071, 0.4867, 0.4408], [0.2675, 0.2565, 0.2761])
-            ])),
-            batch_size=args.test_batch_size, shuffle=True, **kwargs)
-        num_classes = 100
-        input_pix = 32
-    else:
-        train_loader = torch.utils.data.DataLoader(
-            datasets.ImageFolder(os.path.join(args.data_dir, 'train'),
-                                 transforms.Compose([
-                                     # transforms.Scale(256),
-                                     transforms.RandomResizedCrop(224),
-                                     transforms.RandomHorizontalFlip(),
-                                     transforms.ToTensor(),
-                                     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                                 ])),
-            batch_size=args.batch_size, shuffle=True, **kwargs)
-        val_loader = torch.utils.data.DataLoader(
-            datasets.ImageFolder(os.path.join(args.data_dir, 'val'),
-                                 transforms.Compose([
-                                     transforms.Resize(256),
-                                     transforms.CenterCrop(224),
-                                     transforms.ToTensor(),
-                                     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                                 ])),
-            batch_size=args.test_batch_size, shuffle=True, **kwargs)
-        num_classes = 1000
-        input_pix = 224
-
-    # create model
-    model = models.__dict__[args.arch](num_classes=num_classes)
-    if args.cuda:
-        model.cuda()
-    else :
-        model = models.__dict__[args.arch](num_classes=num_classes,cfg= [19, 19, 'M', 39, 39, 'M', 79, 79, 79, 'M', 158, 158, 158, 'M', 158, 158, 158, 'M'])
-    # multi-gpu
-    gpu_num = torch.cuda.device_count()
-    print_log('GPU NUM: {:2d}'.format(gpu_num), log)
-    if(args.cuda):model = torch.nn.DataParallel(model, list(range(gpu_num))).cuda()
-    else :model = torch.nn.DataParallel(model, list(range(gpu_num)))
-    # if gpu_num > 1:
-    #     model = torch.nn.DataParallel(model, list(range(gpu_num))).cuda()
-
-    # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
-
-    # optionally resume from a checkpoint
-    if args.resume:
-        if os.path.isfile(args.resume):
-            print("=> loading checkpoint '{}'".format(args.resume))
-            model.module.load_state_dict(torch.load(args.resume).module.state_dict())
-        else:
-            print("=> no checkpoint found at '{}'".format(args.resume))
-
-    cudnn.benchmark = True
-
-    if args.evaluate:
-        validate(val_loader, model, criterion)
-        return
-
-    method = DPSS(model, args.lambda21, args.pr)
-    model_pruning = copy.deepcopy(model)
-    params_before = utils.print_model_param_nums(model_pruning)
-    flops_before = utils.count_model_param_flops(model_pruning, input_pix)
-    #validate(val_loader, model, criterion)
-    optimizer = torch.optim.SGD(model.parameters(), args.lr, momentum=args.momentum, weight_decay=args.weight_decay)
-    next_ratio = 1.
-    for epoch in range(args.start_epoch, args.epochs):
-        adjust_learning_rate(optimizer, epoch)
-        model_pruning = copy.deepcopy(model)
-        method1 = DPSS(model_pruning, args.lambda21, args.pr)
-        # method1.adjust_scale_coe(next_ratio)
-        method1.channel_prune()
-        print_log(str(method1.layer_sparsity_ratio), log2)
-        params_pruning = utils.print_model_param_nums(method1.model.module)
-        flops_pruning = utils.count_model_param_flops(method1.model.module, input_pix)
-        pruned_params = 1 - params_pruning / params_before
-        pruned_flops = 1 - flops_pruning / flops_before
-        if not args.flops:
-            next_ratio = get_new_scale(args.pr, pruned_params, copy.deepcopy(model), input_pix, params_before, next_ratio)
-        else:
-            next_ratio = get_new_scale(args.pr, pruned_flops, copy.deepcopy(model), input_pix, flops_before, next_ratio, args.flops)
-        method.adjust_scale_coe(next_ratio)
-        model_pruning1 = copy.deepcopy(model)
-        method2 = DPSS(model_pruning1, args.lambda21, args.pr)
-        method2.adjust_scale_coe(next_ratio)
-        method2.channel_prune()
-        print_log(str(method2.layer_sparsity_allocation_ratio), log3)
-        print(next_ratio)
-        train_loss = train(train_loader, model, criterion, optimizer, epoch, method, True)
-        # evaluate on validation set
-        prec1 = validate(val_loader, model, criterion)
-        # remember best prec@1 and save checkpoint
-        is_best = prec1 > best_prec1
-        best_prec1 = max(prec1, best_prec1)
-        save_checkpoint(model, model_save_name, is_best)
-
-        print_log('{}\t''{trn_loss:.4f}\t''{tst_acc:.4f}\t''{pratio:.4f}\t''{fratio:.4f}\t'.format(epoch, trn_loss=train_loss, tst_acc=prec1, pratio=(params_before - params_pruning) / params_before, fratio=(flops_before - flops_pruning) / flops_before), log1)
-        print_log('{}\t''{trn_loss:.4f}\t''{tst_acc:.4f}\t''{pratio:.4f}\t''{fratio:.4f}\t'.format(epoch, trn_loss=train_loss, tst_acc=prec1, pratio=(params_before - params_pruning) / params_before, fratio=(flops_before - flops_pruning) / flops_before), log)
-
-        if(epoch==35):
-            save_checkpoint(model, os.path.join(args.save_dir, 'epoch35'), is_best)
-
-
-    print_log('Get new model\n', log)
-    model = torch.load(model_save_name + '_best.pth.tar')
-    if args.cuda:
-        model.cuda()
-    method2 = DPSS(model, args.lambda21, args.pr)
-    method2.channel_prune()
-    model = method2.model
-    if args.cuda:
-        model.cuda()
-    validate(val_loader, model, criterion)
-    save_checkpoint(model, model_save_name + '_pruned', False)
-    params_after = utils.print_model_param_nums(model.module)
-    flops_after = utils.count_model_param_flops(model.module, input_pix)
-    print_log('Before pruning: \n'
-          'params: {}\t''flops: {}\n'
-          'After pruning: \n'
-          'params: {}\t''flops: {}\n'
-          'params_ratio: {pratio:.2f}%\t''flops_ratio: {fratio:.2f}%\n'
-          'params_rate: {prate:.2f}\t''flops_rate: {frate:.2f}\n'
-          'Prec@1: {top1:.4f}'.format(
-        params_before, flops_before, params_after, flops_after,
-        pratio=(params_before - params_after) * 100. / params_before,
-        fratio=(flops_before - flops_after) * 100. / flops_before,
-        prate=params_before / params_after,
-        frate=flops_before / flops_after,
-        top1=best_prec1), log)
-    log.close()
-    log1.close()
-    log2.close()
-    log3.close()
 
 
 def get_new_scale(dest_pr, input_pr, input_model, input_pix, input_before, input_ratio=1., flops=False):
@@ -312,61 +125,6 @@ def get_new_scale(dest_pr, input_pr, input_model, input_pix, input_before, input
     return get_ratio
 
 
-def train(train_loader, model, criterion, optimizer, epoch, method, method_flag=False):
-    batch_time = AverageMeter()
-    data_time = AverageMeter()
-    losses = AverageMeter()
-    top1 = AverageMeter()
-    top5 = AverageMeter()
-
-    # switch to train mode
-    model.train()
-
-    end = time.time()
-    s_e = sparse_coefficent(epoch, args)
-    method.sparse_coefficent_value(s_e, args.stsr)
-    for i, (data, target) in enumerate(train_loader):
-        # measure data loading time
-        data_time.update(time.time() - end)
-
-        if args.cuda:
-            data, target = data.cuda(), target.cuda()
-
-        # compute output
-        output = model(data)
-        loss = criterion(output, target)
-
-        # measure accuracy and record loss
-        prec1, prec5 = accuracy(output.data, target, topk=(1, 5))
-        losses.update(loss.item(), data.size(0))
-        top1.update(prec1[0], data.size(0))
-        top5.update(prec5[0], data.size(0))
-
-        # compute gradient and do SGD step
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        # if i % 5 == 0:
-        if method_flag:
-            method.model = model
-            method.model_weight_update()
-            model = method.model
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
-
-        if i % args.print_freq == 0:
-            print_log('Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-                  'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'
-                  'Prec@5 {top5.val:.3f} ({top5.avg:.3f})\t''lambda: {s_e:.5f}'.format(
-                epoch, i, len(train_loader), batch_time=batch_time,
-                data_time=data_time, loss=losses, top1=top1, top5=top5, s_e=s_e), log)
-    # method.print_index()
-
-    return losses.avg
 
 
 def validate(val_loader, model, criterion):
@@ -516,6 +274,8 @@ class DPSS:
         self.pruneLayer=[]
         self.layer_flops=layer_flops
         self.printf=[]
+        self.weightMean=[]
+        self.importanceMean = []
     def adjust_scale_coe(self, scale_coe):
         self.scale_coe = scale_coe
 
@@ -577,10 +337,13 @@ class DPSS:
         index=torch.where(add_t_t1<Sensitivity)[0]
         if(len(add_t_t1)-len(index)<20):
             _, index = torch.topk(add_t_t1, int(conv_layer.out_channels-20), largest=False)
-        print(len(index)," ",len(add_t_t1),"  ",len(index)*1.0/len(add_t_t1),"   ",Sensitivity)
+        #print(len(index)," ",len(add_t_t1),"  ",len(index)*1.0/len(add_t_t1),"   ",Sensitivity)
         self.SimilarityArray = np.append(self.SimilarityArray, torch.where(add_t_t1 < Sensitivity, 1, 0).cpu().numpy())
         self.pruneLayer.append(index)
         self.printf.append(len(index)/len(add_t_t1))
+
+        self.weightMean.append(weight_copy.mean().cpu().numpy())
+        self.importanceMean.append(add_t_t1.mean().cpu().numpy())
         return index, t_sum, t1_sum
     def print_index(self):
         if 'vgg' in args.arch:
@@ -712,7 +475,7 @@ class DPSS:
                         self.model.module._modules['feature'][layer_index].weight.data = self.L21_regularizer(self.model.module._modules['feature'][layer_index], update_index)
                         self.model.module._modules['classifier1'].weight.data = self.L21_next_regularizer(
                             self.model.module._modules['classifier1'], update_index)
-        print("layerPersent:",self.printf)
+        #print("layerPersent:",self.printf)
     def model_weight_update(self):
         if(self.flag==1): return
         if 'vgg' in args.arch or 'CNN' in args.arch:
@@ -807,6 +570,3 @@ class DPSS:
                             self.model.module._modules[layer_index_value][j].conv2,
                             self.model.module._modules[layer_index_value][j].bn2,
                             self.model.module._modules[layer_index_value][j].conv3)
-
-if __name__ == '__main__':
-    main()
