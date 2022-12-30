@@ -19,16 +19,16 @@ $ python train.py n_round=100 C=0.3
 ```
 
 ## Usages config\config.yaml
-- `model`: vgg # 模型
-- `fed`: fedCDP # 算法
-- `optim`: sgd # 优化
+- `model`: vgg 
+- `fed`: fedCDP # algorithm
+- `optim`: sgd 
 
 - `device`: 'cuda'
 
-- `n_round`: 200 # 训练轮数
+- `n_round`: 200 # Number of training rounds
 - `E`: 5 # Local epoch
 - `K`: 100 # Number of clients
 - `C`: 0.1 # Percentage of clients participating in training in each round
 - `B`: 64  # Batchsize
-- `iid`: False  # 数据是否独立同分布
-- `dataSet`: mnist  # 数据集
+- `iid`: [True, False]  # Whether the data is IID distribution 
+- `dataSet`: [mnist, cifar10, cifar100]
